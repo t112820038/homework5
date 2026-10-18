@@ -1,13 +1,12 @@
 /* ==========================================
-   HYPERSPINS 9999 - ENGINE & INTERACT (WEIGHTED PROBABILITY)
+   HYPERSPINS 9999 - ENGINE & INTERACT (FIXED & WEIGHTED)
    ========================================== */
 
 // --- Global State ---
 // 6 個獎項名稱
 let items = ["手機", "鈔票", "奔馳", "金條", "大金勞", "沒中"];
 
-// 每個獎項對應的抽中機率權重 (總和 = 100%)
-// "沒中" 佔 95%，其餘 5 個大獎各佔 1% (合計 5%)
+// 機率權重 (總和 100%)：沒中 95%，其餘 5 個大獎各 1%
 let itemWeights = [1, 1, 1, 1, 1, 95];
 
 const colors = ['#ff007f', '#9d00ff', '#00ff66', '#ffe600', '#00f3ff', '#ff3300'];
@@ -24,10 +23,6 @@ let isSpinning = false;
 let audioEnabled = true;
 let audioCtx = null;
 let lastSectorIndex = -1;
-
-// 紀錄預先計算好的目標停止角度與中獎索引
-let targetIndex = -1;
-let targetAngle = 0;
 
 // --- DOM Elements ---
 const canvas = document.getElementById('wheelCanvas');
@@ -72,7 +67,7 @@ function playTickSound() {
 function playWinSound() {
   if (!audioEnabled || !audioCtx) return;
   const now = audioCtx.currentTime;
-  const freqs = [523.25, 659.25, 783.99, 1046.50]; // C5, E5, G5, C6
+  const freqs = [523.25, 659.25, 783.99, 1046.50];
   freqs.forEach((f, i) => {
     const osc = audioCtx.createOscillator();
     const gain = audioCtx.createGain();
@@ -90,6 +85,8 @@ function playWinSound() {
 // --- Wheel Drawing Logic ---
 function drawWheel() {
   const numItems = items.length;
+  if (numItems === 0) return;
+  
   const arc = (2 * Math.PI) / numItems;
   const outsideRadius = 160;
   const textRadius = 110;
@@ -113,7 +110,7 @@ function drawWheel() {
     // Text Render
     ctx.save();
     ctx.fillStyle = '#000';
-    ctx.font = 'bold 13px "Share Tech Mono", monospace';
+    ctx.font = 'bold 14px "Share Tech Mono", monospace';
     ctx.translate(
       170 + Math.cos(angle + arc / 2) * textRadius,
       170 + Math.sin(angle + arc / 2) * textRadius
@@ -125,9 +122,8 @@ function drawWheel() {
   }
 }
 
-// --- 加權隨機抽獎演算法 (Weighted Random Choice) ---
+// --- Weighted Random Calculation ---
 function getWeightedRandomIndex() {
-  // 如果項目數量跟權重陣列不一致（例如使用者手動新增/刪除項目），改為等機率
   if (items.length !== itemWeights.length) {
     return Math.floor(Math.random() * items.length);
   }
@@ -145,9 +141,12 @@ function getWeightedRandomIndex() {
 }
 
 // --- Physics Spin Mechanics ---
-let spinTime = 0;
-let spinTimeTotal = 0;
-let initialStartAngle = 0;
+let spinTimeout = null;
+let currentStep = 0;
+let totalSteps = 0;
+let initialAngle = 0;
+let totalRotationAngle = 0;
+let winningIndex = -1;
 
 function spin() {
   if (isSpinning || items.length === 0) return;
@@ -155,11 +154,210 @@ function spin() {
   isSpinning = true;
   spinBtn.classList.add('spinning');
 
-  // 1. 根據機率預先決定中獎 Index
-  targetIndex = getWeightedRandomIndex();
+  winningIndex = getWeightedRandomIndex();
 
-  // 2. 計算目標扇區對應的角度 (指針在頂部 270 度 / 1.5 PI 位置)
   const numItems = items.length;
   const arc = (2 * Math.PI) / numItems;
+  const randomSectorOffset = (Math.random() * 0.6 + 0.2) * arc;
   
-  // 讓停下的位置落在扇區中央（加上微幅隨機偏移，避免每次都停在正
+  const targetAngleInSector = (1.5 * Math.PI) - (winningIndex * arc + randomSectorOffset);
+  const extraRounds = Math.floor(Math.random() * 4 + 5) * (2 * Math.PI);
+  
+  initialAngle = startAngle % (2 * Math.PI);
+  let targetAngle = targetAngleInSector + extraRounds;
+  
+  while (targetAngle < initialAngle) {
+    targetAngle += 2 * Math.PI;
+  }
+  
+  totalRotationAngle = targetAngle - initialAngle;
+  currentStep = 0;
+  totalSteps = Math.floor(Math.random() * 80 + 180);
+
+  rotateWheel();
+}
+
+function rotateWheel() {
+  currentStep++;
+  if (currentStep >= totalSteps) {
+    stopRotateWheel();
+    return;
+  }
+
+  const progress = currentStep / totalSteps;
+  const easeOut = 1 - Math.pow(1 - progress, 5);
+  
+  startAngle = initialAngle + totalRotationAngle * easeOut;
+  drawWheel();
+
+  const numItems = items.length;
+  const arc = (2 * Math.PI) / numItems;
+  const normalizedAngle = (2 * Math.PI - (startAngle % (2 * Math.PI))) % (2 * Math.PI);
+  const currentSector = Math.floor(((normalizedAngle + 1.5 * Math.PI) % (2 * Math.PI)) / arc);
+  
+  if (currentSector !== lastSectorIndex) {
+    playTickSound();
+    lastSectorIndex = currentSector;
+  }
+
+  spinTimeout = requestAnimationFrame(rotateWheel);
+}
+
+function stopRotateWheel() {
+  isSpinning = false;
+  spinBtn.classList.remove('spinning');
+  
+  const winningItem = items[winningIndex];
+  triggerWin(winningItem);
+}
+
+// --- Win Modal & Particles ---
+function triggerWin(result) {
+  playWinSound();
+  winResultText.innerText = result;
+  winModal.classList.remove('hidden');
+  
+  const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  historyLogs.unshift({ time, result });
+  renderHistory();
+  
+  triggerConfetti();
+}
+
+function renderHistory() {
+  historyCount.innerText = historyLogs.length;
+  if (historyLogs.length === 0) {
+    historyList.innerHTML = `<li class="empty-log">NO DATA IN BUFFER...</li>`;
+    return;
+  }
+  historyList.innerHTML = historyLogs.map(log => `
+    <li class="history-item">
+      <span>${log.result}</span>
+      <span style="color:#888">${log.time}</span>
+    </li>
+  `).join('');
+}
+
+// --- Item Config Handlers ---
+function renderEditorItems() {
+  itemsList.innerHTML = items.map((item, idx) => `
+    <li class="editor-item">
+      <span>${idx + 1}. ${item} (${itemWeights[idx] || 1}%)</span>
+      <button class="del-item-btn" onclick="removeItem(${idx})">✖</button>
+    </li>
+  `).join('');
+  drawWheel();
+}
+
+window.removeItem = function(index) {
+  if (items.length <= 2) {
+    alert("SYSTEM ERROR: 最少需要 2 個選項！");
+    return;
+  }
+  items.splice(index, 1);
+  itemWeights.splice(index, 1);
+  renderEditorItems();
+};
+
+addItemBtn.addEventListener('click', () => {
+  const val = newItemInput.value.trim();
+  if (val) {
+    items.push(val);
+    itemWeights.push(1);
+    newItemInput.value = '';
+    renderEditorItems();
+  }
+});
+
+document.querySelectorAll('.preset-btn').forEach(btn => {
+  btn.addEventListener('click', (e) => {
+    const key = e.target.dataset.preset;
+    if (presets[key]) {
+      items = [...presets[key]];
+      itemWeights = items.map(() => 1);
+      renderEditorItems();
+    }
+  });
+});
+
+// --- Modal Controls ---
+openConfigBtn.addEventListener('click', () => configModal.classList.remove('hidden'));
+closeConfigBtn.addEventListener('click', () => configModal.classList.add('hidden'));
+
+claimWinBtn.addEventListener('click', () => winModal.classList.add('hidden'));
+
+removeWinItemBtn.addEventListener('click', () => {
+  const currentWinText = winResultText.innerText;
+  const idx = items.indexOf(currentWinText);
+  if (idx !== -1 && items.length > 2) {
+    items.splice(idx, 1);
+    itemWeights.splice(idx, 1);
+    renderEditorItems();
+  } else if (items.length <= 2) {
+    alert("選項少於 2 個，無法繼續剔除！");
+  }
+  winModal.classList.add('hidden');
+});
+
+toggleAudioBtn.addEventListener('click', () => {
+  audioEnabled = !audioEnabled;
+  toggleAudioBtn.innerText = audioEnabled ? '🔊 SFX: ON' : '🔇 SFX: OFF';
+  toggleAudioBtn.style.opacity = audioEnabled ? '1' : '0.5';
+});
+
+spinBtn.addEventListener('click', spin);
+
+// --- Particle Glitch Confetti ---
+const pCanvas = document.getElementById('particleCanvas');
+const pCtx = pCanvas.getContext('2d');
+let particles = [];
+
+function resizeParticleCanvas() {
+  pCanvas.width = window.innerWidth;
+  pCanvas.height = window.innerHeight;
+}
+window.addEventListener('resize', resizeParticleCanvas);
+resizeParticleCanvas();
+
+function triggerConfetti() {
+  particles = [];
+  const pColors = ['#ff007f', '#9d00ff', '#00ff66', '#ffe600', '#00f3ff'];
+  for (let i = 0; i < 70; i++) {
+    particles.push({
+      x: window.innerWidth / 2,
+      y: window.innerHeight / 2,
+      vx: (Math.random() - 0.5) * 16,
+      vy: (Math.random() - 0.5) * 16 - 4,
+      size: Math.random() * 8 + 4,
+      color: pColors[Math.floor(Math.random() * pColors.length)],
+      life: 1.0,
+      decay: Math.random() * 0.02 + 0.015
+    });
+  }
+  animateParticles();
+}
+
+function animateParticles() {
+  pCtx.clearRect(0, 0, pCanvas.width, pCanvas.height);
+  particles.forEach((p, i) => {
+    p.x += p.vx;
+    p.y += p.vy;
+    p.vy += 0.2;
+    p.life -= p.decay;
+
+    if (p.life > 0) {
+      pCtx.fillStyle = p.color;
+      pCtx.globalAlpha = p.life;
+      pCtx.fillRect(p.x, p.y, p.size, p.size);
+    } else {
+      particles.splice(i, 1);
+    }
+  });
+
+  if (particles.length > 0) {
+    requestAnimationFrame(animateParticles);
+  }
+}
+
+// --- Initialization ---
+renderEditorItems();
