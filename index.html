@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>HYPERSPINS 9999 // GLITCH WHEEL</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <!-- CRT Scanline Effect Overlay -->
+  <div class="crt-overlay"></div>
+
+  <!-- Background Glitch Shapes -->
+  <div class="bg-grid"></div>
+
+  <div class="app-container">
+    <!-- Header -->
+    <header class="cyber-header">
+      <div class="status-badge"><span class="blink">●</span> LIVE_NODE_99</div>
+      <h1 class="glitch-title" data-text="HYPER★SPIN">HYPER★SPIN</h1>
+      <p class="cyber-sub">LUCKY_WHEEL_SYS_V2.0</p>
+    </header>
+
+    <!-- Lucky Wheel Stage -->
+    <main class="wheel-stage">
+      <div class="pointer-wrapper">
+        <div class="pointer">▼</div>
+      </div>
+      <div class="wheel-outer-ring">
+        <canvas id="wheelCanvas" width="340" height="340"></canvas>
+      </div>
+      <button id="spinBtn" class="spin-btn">
+        <span class="btn-text">SPIN!</span>
+        <span class="btn-glitch">SP1N!</span>
+      </button>
+    </main>
+
+    <!-- Controls & Actions -->
+    <div class="action-bar">
+      <button id="openConfigBtn" class="cyber-btn pink">⚙ CONFIG_ITEMS</button>
+      <button id="toggleAudioBtn" class="cyber-btn yellow">🔊 SFX: ON</button>
+    </div>
+
+    <!-- History Panel -->
+    <section class="history-section">
+      <h3 class="section-title">LOGS_HISTORY [ <span id="historyCount">0</span> ]</h3>
+      <ul id="historyList" class="history-list">
+        <li class="empty-log">NO DATA IN BUFFER...</li>
+      </ul>
+    </section>
+  </div>
+
+  <!-- Item Config Drawer / Modal -->
+  <div id="configModal" class="modal-backdrop hidden">
+    <div class="modal-box cyber-border">
+      <div class="modal-header">
+        <h2>ITEM_CONFIG_MATRIX</h2>
+        <button id="closeConfigBtn" class="close-btn">✕</button>
+      </div>
+      <div class="preset-group">
+        <span>PRESETS:</span>
+        <button class="preset-btn" data-preset="food">宵夜指南</button>
+        <button class="preset-btn" data-preset="punish">派對懲罰</button>
+        <button class="preset-btn" data-preset="number">幸運數字</button>
+      </div>
+      <div class="input-add-group">
+        <input type="text" id="newItemInput" placeholder="輸入新獎項..." maxlength="15" />
+        <button id="addItemBtn" class="cyber-btn green">+ ADD</button>
+      </div>
+      <ul id="itemsList" class="items-editor-list"></ul>
+    </div>
+  </div>
+
+  <!-- Win Result Modal -->
+  <div id="winModal" class="modal-backdrop hidden">
+    <div class="modal-box cyber-border win-box">
+      <div class="glitch-banner">SYSTEM_OVERRIDE</div>
+      <p class="win-label">WINNER DETECTED // 抽中結果</p>
+      <h1 id="winResultText" class="win-result-text">---</h1>
+      <div class="win-actions">
+        <button id="claimWinBtn" class="cyber-btn green">ACCEPT (接受)</button>
+        <button id="removeWinItemBtn" class="cyber-btn pink">REMOVE & SPIN (剔除並繼續)</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Particle Layer for Canvas Confetti -->
+  <canvas id="particleCanvas"></canvas>
+
+  <script src="app.js"></script>
+</body>
+</html>
