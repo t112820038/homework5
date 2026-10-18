@@ -1,12 +1,12 @@
 /* ==========================================
-   HYPERSPINS 9999 - ENGINE & INTERACT (FIXED & WEIGHTED)
+   HYPERSPINS 9999 - ENGINE & INTERACT (WEIGHTED & FIXED)
    ========================================== */
 
 // --- Global State ---
-// 6 個獎項名稱
+// 6 個指定獎項
 let items = ["手機", "鈔票", "奔馳", "金條", "大金勞", "沒中"];
 
-// 機率權重 (總和 100%)：沒中 95%，其餘 5 個大獎各 1%
+// 機率權重：沒中 95%，其餘 5 個大獎各 1%
 let itemWeights = [1, 1, 1, 1, 1, 95];
 
 const colors = ['#ff007f', '#9d00ff', '#00ff66', '#ffe600', '#00f3ff', '#ff3300'];
@@ -38,7 +38,6 @@ const toggleAudioBtn = document.getElementById('toggleAudioBtn');
 const winModal = document.getElementById('winModal');
 const winResultText = document.getElementById('winResultText');
 const claimWinBtn = document.getElementById('claimWinBtn');
-const removeWinItemBtn = document.getElementById('removeWinItemBtn');
 const historyList = document.getElementById('historyList');
 const historyCount = document.getElementById('historyCount');
 let historyLogs = [];
@@ -285,19 +284,6 @@ openConfigBtn.addEventListener('click', () => configModal.classList.remove('hidd
 closeConfigBtn.addEventListener('click', () => configModal.classList.add('hidden'));
 
 claimWinBtn.addEventListener('click', () => winModal.classList.add('hidden'));
-
-removeWinItemBtn.addEventListener('click', () => {
-  const currentWinText = winResultText.innerText;
-  const idx = items.indexOf(currentWinText);
-  if (idx !== -1 && items.length > 2) {
-    items.splice(idx, 1);
-    itemWeights.splice(idx, 1);
-    renderEditorItems();
-  } else if (items.length <= 2) {
-    alert("選項少於 2 個，無法繼續剔除！");
-  }
-  winModal.classList.add('hidden');
-});
 
 toggleAudioBtn.addEventListener('click', () => {
   audioEnabled = !audioEnabled;
