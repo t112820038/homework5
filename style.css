@@ -66,7 +66,7 @@ body {
   position: relative;
   z-index: 1;
   width: 100%;
-  max-width: 430px; /* Mobile width constraint */
+  max-width: 430px;
   padding: 16px;
   display: flex;
   flex-direction: column;
